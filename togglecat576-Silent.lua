@@ -165,7 +165,7 @@ local function showWatermark()
         title.BackgroundTransparency = 1
         title.TextColor3 = Color3.fromRGB(255, 20 ,147)
         title.Text = "576"
-        title.Font = Enum.Font.GothamBlack
+        subtitle.Font = Enum.Font.Cartoon
         title.TextScaled = true
         title.TextWrapped = true
         title.ZIndex = 3
@@ -176,7 +176,7 @@ local function showWatermark()
         subtitle.BackgroundTransparency = 1
         subtitle.TextColor3 = Color3.fromRGB(255, 20 ,147)
         subtitle.Text = "made by togglecat576"
-        subtitle.Font = Enum.Font.Gotham
+        subtitle.Font = Enum.Font.Cartoon
         subtitle.TextScaled = true
         subtitle.TextWrapped = true
         subtitle.ZIndex = 3
