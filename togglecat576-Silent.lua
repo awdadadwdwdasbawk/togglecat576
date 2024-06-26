@@ -47,7 +47,7 @@ local StarterGui = G:GetService("StarterGui")
 local Workspace = G:GetService("Workspace")
 local SoundService = G:GetService("SoundService")
 
--- // Variables // -- made by togglecat576 ://
+-- // Variables // -- made by togglecat576 :///
 local Target = nil
 local V2 = Vector2.new
 local Fov = Drawing.new("Circle")
