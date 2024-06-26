@@ -163,8 +163,8 @@ local function showWatermark()
         title.Size = UDim2.new(1, 0, 0.6, 0)
         title.Position = UDim2.new(0, 0, 0.1, 0)
         title.BackgroundTransparency = 1
-        title.TextColor3 = Color3.fromRGB(0, 162, 232)
-        title.Text = "S"
+        title.TextColor3 = Color3.fromRGB(255, 20 ,147)
+        title.Text = "576"
         title.Font = Enum.Font.GothamBlack
         title.TextScaled = true
         title.TextWrapped = true
@@ -174,7 +174,7 @@ local function showWatermark()
         subtitle.Size = UDim2.new(1, 0, 0.3, 0)
         subtitle.Position = UDim2.new(0, 0, 0.7, 0)
         subtitle.BackgroundTransparency = 1
-        subtitle.TextColor3 = Color3.fromRGB(0, 162, 232)
+        subtitle.TextColor3 = Color3.fromRGB(255, 20 ,147)
         subtitle.Text = "made by togglecat576"
         subtitle.Font = Enum.Font.Gotham
         subtitle.TextScaled = true
