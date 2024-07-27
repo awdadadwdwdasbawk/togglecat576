@@ -1,0 +1,334 @@
+-- Aimbot script
+getgenv().OldAimPart = "HumanoidRootPart"
+getgenv().AimPart = "HumanoidRootPart" -- For R15 Games: {UpperTorso, LowerTorso, HumanoidRootPart, Head} | For R6 Games: {Head, Torso, HumanoidRootPart}
+getgenv().AimlockKey = "e"
+getgenv().AimlockKeyMode = "hold" -- "hold" or "toggle"
+getgenv().AimRadius = 111111 -- How far away from someone's character you want to lock on at
+getgenv().ThirdPerson = true 
+getgenv().FirstPerson = true
+getgenv().TeamCheck = false -- Check if the target is on your team (True means it won't lock onto your teammates, false is vice versa)
+getgenv().PredictMovement = true -- Predicts if they are moving in fast velocity (like jumping) so the aimbot will go a bit faster to match their speed 
+getgenv().PredictionVelocity = 6.612
+getgenv().CheckIfJumped = true
+getgenv().Smoothness = true
+getgenv().SmoothnessAmount = 0.4
+getgenv().KnockCheck = true -- Enable or disable checking if the player is knocked out or dead
+getgenv().AimMethod = "Distance" -- "Distance" or "Cursor" to lock onto the closest person or the person closest to your mouse
+
+local Players, Uis, RService, SGui = game:GetService"Players", game:GetService"UserInputService", game:GetService"RunService", game:GetService"StarterGui"
+local Client, Mouse, Camera, CF, RNew, Vec3, Vec2 = Players.LocalPlayer, Players.LocalPlayer:GetMouse(), workspace.CurrentCamera, CFrame.new, Ray.new, Vector3.new, Vector2.new
+local Aimlock, MousePressed, CanNotify = true, false, false
+local AimlockTarget
+local OldPre
+
+getgenv().WorldToViewportPoint = function(P)
+    return Camera:WorldToViewportPoint(P)
+end
+
+getgenv().WorldToScreenPoint = function(P)
+    return Camera.WorldToScreenPoint(Camera, P)
+end
+
+getgenv().GetObscuringObjects = function(T)
+    if T and T:FindFirstChild(getgenv().AimPart) and Client and Client.Character:FindFirstChild("Head") then 
+        local RayPos = workspace:FindPartOnRay(RNew(
+            T[getgenv().AimPart].Position, Client.Character.Head.Position)
+        )
+        if RayPos then return RayPos:IsDescendantOf(T) end
+    end
+end
+
+-- Function to check if a player is knocked out or dead
+local function IsKnocked(Plr)
+    if Plr.Character and Plr.Character:FindFirstChild("BodyEffects") then
+        local bodyEffects = Plr.Character.BodyEffects
+        local ko = bodyEffects:FindFirstChild("K.O") or bodyEffects:FindFirstChild("KO")
+        return ko and ko.Value
+    end
+    return false
+end
+
+getgenv().GetNearestTarget = function()
+    -- Nearest target 
+    local players = {}
+    local PLAYER_HOLD  = {}
+    local DISTANCES = {}
+    for i, v in pairs(Players:GetPlayers()) do
+        if v ~= Client then
+            table.insert(players, v)
+        end
+    end
+    for i, v in pairs(players) do
+        if v.Character ~= nil and not (getgenv().KnockCheck and IsKnocked(v)) then -- Add knock check here
+            local AIM = v.Character:FindFirstChild("Head")
+            local DISTANCE = (v.Character:FindFirstChild("Head").Position - game.Workspace.CurrentCamera.CFrame.p).magnitude
+            local RAY = Ray.new(game.Workspace.CurrentCamera.CFrame.p, (Mouse.Hit.p - game.Workspace.CurrentCamera.CFrame.p).unit * DISTANCE)
+            local HIT, POS = game.Workspace:FindPartOnRay(RAY, game.Workspace)
+            local DIFF = math.floor((POS - AIM.Position).magnitude)
+            
+            if getgenv().TeamCheck == true and v.Team ~= Client.Team then
+                PLAYER_HOLD[v.Name .. i] = {}
+                PLAYER_HOLD[v.Name .. i].dist = DISTANCE
+                PLAYER_HOLD[v.Name .. i].plr = v
+                PLAYER_HOLD[v.Name .. i].diff = DIFF
+                table.insert(DISTANCES, DIFF)
+            elseif getgenv().TeamCheck == false and v.Team == Client.Team then 
+                PLAYER_HOLD[v.Name .. i] = {}
+                PLAYER_HOLD[v.Name .. i].dist = DISTANCE
+                PLAYER_HOLD[v.Name .. i].plr = v
+                PLAYER_HOLD[v.Name .. i].diff = DIFF
+                table.insert(DISTANCES, DIFF)
+            end
+        end
+    end
+
+    if unpack(DISTANCES) == nil then
+        return nil
+    end
+
+    if getgenv().AimMethod == "Distance" then
+        local L_DISTANCE = math.floor(math.min(unpack(DISTANCES)))
+        if L_DISTANCE > getgenv().AimRadius then
+            return nil
+        end
+
+        for i, v in pairs(PLAYER_HOLD) do
+            if v.diff == L_DISTANCE then
+                return v.plr
+            end
+        end
+    elseif getgenv().AimMethod == "Cursor" then
+        local closestPlayer
+        local closestDistance = math.huge
+        for i, v in pairs(PLAYER_HOLD) do
+            local playerScreenPos = Camera:WorldToScreenPoint(v.plr.Character.Head.Position)
+            local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+            local distanceFromMouse = (playerScreenPos - mousePos).Magnitude
+
+            if distanceFromMouse < closestDistance then
+                closestDistance = distanceFromMouse
+                closestPlayer = v.plr
+            end
+        end
+        return closestPlayer
+    end
+    
+    return nil
+end
+
+-- Handle KeyDown for "toggle" and "hold" modes
+Mouse.KeyDown:Connect(function(a)
+    if not (Uis:GetFocusedTextBox()) then 
+        if a == getgenv().AimlockKey then
+            if getgenv().AimlockKeyMode == "toggle" then
+                -- Toggle Mode
+                if AimlockTarget == nil then
+                    pcall(function()
+                        if MousePressed ~= true then MousePressed = true end 
+                        local Target = GetNearestTarget()
+                        if Target ~= nil then 
+                            AimlockTarget = Target
+                        end
+                    end)
+                else
+                    AimlockTarget = nil
+                    MousePressed = false
+                end
+            elseif getgenv().AimlockKeyMode == "hold" then
+                -- Hold Mode
+                MousePressed = true
+                local Target = GetNearestTarget()
+                if Target ~= nil then 
+                    AimlockTarget = Target
+                end
+            end
+        end
+    end
+end)
+
+-- Handle KeyUp for "hold" mode
+Mouse.KeyUp:Connect(function(a)
+    if not (Uis:GetFocusedTextBox()) then 
+        if a == getgenv().AimlockKey and getgenv().AimlockKeyMode == "hold" then
+            MousePressed = false
+            AimlockTarget = nil
+        end
+    end
+end)
+
+RService.RenderStepped:Connect(function()
+    if getgenv().ThirdPerson == true and getgenv().FirstPerson == true then 
+        if (Camera.Focus.p - Camera.CFrame.p).Magnitude > 1 or (Camera.Focus.p - Camera.CFrame.p).Magnitude <= 1 then 
+            CanNotify = true 
+        else 
+            CanNotify = false 
+        end
+    elseif getgenv().ThirdPerson == true and getgenv().FirstPerson == false then 
+        if (Camera.Focus.p - Camera.CFrame.p).Magnitude > 1 then 
+            CanNotify = true 
+        else 
+            CanNotify = false 
+        end
+    elseif getgenv().ThirdPerson == false and getgenv().FirstPerson == true then 
+        if (Camera.Focus.p - Camera.CFrame.p).Magnitude <= 1 then 
+            CanNotify = true 
+        else 
+            CanNotify = false 
+        end
+    end
+
+    if Aimlock == true and MousePressed == true then 
+        if AimlockTarget and AimlockTarget.Character and AimlockTarget.Character:FindFirstChild(getgenv().AimPart) then 
+            if getgenv().FirstPerson == true then
+                if CanNotify == true then
+                    if getgenv().PredictMovement == true then
+                        if getgenv().Smoothness == true then
+                            -- The part we're going to lerp/smoothen
+                            local Main = CF(Camera.CFrame.p, AimlockTarget.Character[getgenv().AimPart].Position + AimlockTarget.Character[getgenv().AimPart].Velocity / getgenv().PredictionVelocity)
+                            -- Making it work
+                            Camera.CFrame = Camera.CFrame:Lerp(Main, 1 - getgenv().SmoothnessAmount)
+                        else
+                            Camera.CFrame = CF(Camera.CFrame.p, AimlockTarget.Character[getgenv().AimPart].Position + AimlockTarget.Character[getgenv().AimPart].Velocity / getgenv().PredictionVelocity)
+                        end
+                    elseif getgenv().PredictMovement == false then 
+                        if getgenv().Smoothness == true then
+                            -- The part we're going to lerp/smoothen
+                            local Main = CF(Camera.CFrame.p, AimlockTarget.Character[getgenv().AimPart].Position)
+                            -- Making it work
+                            Camera.CFrame = Camera.CFrame:Lerp(Main, 1 - getgenv().SmoothnessAmount)
+                        else
+                            Camera.CFrame = CF(Camera.CFrame.p, AimlockTarget.Character[getgenv().AimPart].Position)
+                        end
+                    end
+                end
+            end
+        end
+        -- Check if the target is knocked and unlock if necessary
+        if getgenv().KnockCheck and AimlockTarget and IsKnocked(AimlockTarget) then
+            AimlockTarget = nil
+            MousePressed = false
+        end
+    end
+    if getgenv().CheckIfJumped == true then
+        if AimlockTarget and AimlockTarget.Character and AimlockTarget.Character.Humanoid.FloorMaterial == Enum.Material.Air then
+            getgenv().AimPart = "HumanoidRootPart"
+        else
+            getgenv().AimPart = getgenv().OldAimPart
+        end
+    end
+end)
+
+local Decimals = 4
+local Clock = os.clock()
+local ValueText = "Value Is Now :"
+
+local library = loadstring(game:HttpGet("https://raw.githubusercontent.com/drillygzzly/Roblox-UI-Libs/main/1%20Tokyo%20Lib%20(FIXED)/Tokyo%20Lib%20Source.lua"))({
+    cheatname = "Title Here", -- watermark text
+    gamename = "Title Here", -- watermark text
+})
+
+library:init()
+
+local Window1  = library.NewWindow({
+    title = "uwm.cc | by @uwmuwmuwmuwm", -- Mainwindow Text
+    size = UDim2.new(0, 510, 0, 400) -- Corrected the UDim2 size
+})
+
+local Tab1 = Window1:AddTab("  Aiming  ")
+local SettingsTab = library:CreateSettingsTab(Window1)
+
+local Section1 = Tab1:AddSection("Main", 1)
+
+-- Toggle Team Check
+Section1:AddToggle({
+    text = "Team Check",
+    state = getgenv().TeamCheck,
+    tooltip = "Enable or disable aiming at teammates.",
+    callback = function(value)
+        getgenv().TeamCheck = value
+    end
+})
+
+-- Toggle Knock check
+Section1:AddToggle({
+    text = "Knock check",
+    state = getgenv().KnockCheck,
+    tooltip = "Enable or disable checking if the target has died.",
+    callback = function(value)
+        getgenv().KnockCheck= value
+    end
+})
+
+-- Toggle Predict Movement
+Section1:AddToggle({
+    text = "Predict Movement",
+    state = getgenv().PredictMovement,
+    tooltip = "Enable or disable predicting movement for aimlock.",
+    callback = function(value)
+        getgenv().PredictMovement = value
+    end
+})
+
+-- Toggle Check If Jumped
+Section1:AddToggle({
+    text = "Check If Jumped",
+    state = getgenv().CheckIfJumped,
+    tooltip = "Enable or disable checking if the target has jumped.",
+    callback = function(value)
+        getgenv().CheckIfJumped = value
+    end
+})
+
+-- Toggle Smoothness
+Section1:AddToggle({
+    text = "Smoothness",
+    state = getgenv().Smoothness,
+    tooltip = "Enable or disable smooth aiming.",
+    callback = function(value)
+        getgenv().Smoothness = value
+    end
+})
+
+-- Slider for Smoothness Amount
+Section1:AddSlider({
+    enabled = true,
+    text = "Smoothness Amount",
+    tooltip = "Adjust the smoothness level.",
+    min = 0.01, -- Set the minimum to 0.01 instead of 0
+    max = 1,
+    increment = 0.01,
+    flag = "SmoothnessAmount",
+    callback = function(value)
+        getgenv().SmoothnessAmount = value
+    end
+})
+
+-- Slider for Prediction Velocity
+Section1:AddSlider({
+    enabled = true,
+    text = "Prediction Velocity",
+    tooltip = "Adjust the velocity prediction.",
+    min = 0,
+    max = 20,
+    increment = 0.1,  
+    flag = "PredictionVelocity",
+    callback = function(value)
+        getgenv().PredictionVelocity = value
+    end 
+})
+
+-- Dropdown for Aimlock Key Mode
+Section1:AddList({
+    enabled = true,
+    text = "Lock Key Mode",
+    tooltip = "Choose the aimlock key mode.",
+    selected = getgenv().AimlockKeyMode,
+    values = {"hold", "toggle"},
+    flag = "AimlockKeyMode",
+    callback = function(value)
+        getgenv().AimlockKeyMode = value
+    end
+})
+
+local Time = (string.format("%."..tostring(Decimals).."f", os.clock() - Clock))
+library:SendNotification(("Loaded In "..tostring(Time)), 6)
